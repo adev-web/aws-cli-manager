@@ -1,0 +1,179 @@
+git push# aws-cli-manager
+
+CLI toolkit para el flujo de desarrollo diario en Yappy: sesiones AWS, túneles SSM,
+conexión a bases de datos Aurora, Kafka local y más.
+
+## Requisitos previos
+
+Instalar en este orden:
+
+### 1. Python 3.10+
+
+```
+python --version   # >= 3.10
+```
+
+### 2. AWS CLI v2
+
+```
+aws --version
+```
+
+Descargar desde: https://aws.amazon.com/cli/
+
+### 3. Session Manager Plugin
+
+```
+session-manager-plugin --version
+```
+
+Descargar desde: https://docs.aws.amazon.com/systems-manager/latest/userguide/install-plugin.html
+
+### 4. Kafka
+
+Estructura esperada en disco (configurable vía `KAFKA_PATH` en `config/env.base`):
+
+```
+{KAFKA_PATH}/kafka-core/        # bin/, config/, temp/
+{KAFKA_PATH}/kafka-ui/          # main.jar (Kafdrop)
+```
+
+Por defecto `KAFKA_PATH=C:\Development\config\kafka`:
+
+```
+C:\Development\config\kafka\kafka-core/
+C:\Development\config\kafka\kafka-ui/
+```
+
+### 5. Java 17+ (solo para Kafdrop UI)
+
+```
+java --version
+```
+
+---
+
+## Onboarding (nuevo dev)
+
+```bash
+git clone git@github.com:adev-web/aws-cli-manager.git
+cd aws-cli-manager
+pip install -e .
+yappy setup               # Configura shell, verifica dependencias, crea configs desde .example
+source ~/.bashrc
+```
+
+`yappy setup` hace todo automáticamente:
+
+1. **Shell integration** — agrega `eval "$(yappy init bash)"` al `.bashrc`
+2. **Config files** — crea `env.base`, `env.dev`, `env.qa` desde los `.example` si no existen
+3. **Dependencias** — verifica que `aws` y `session-manager-plugin` estén instalados
+4. **Perfil AWS** — verifica que el perfil configurado exista
+
+Después del setup, editá los archivos de config con tus valores:
+
+```bash
+yappy edit           # Abre el proyecto en VS Code
+# Editar config/env.base, config/env.dev, config/env.qa
+```
+
+---
+
+## Uso
+
+### AWS
+
+```bash
+yappy aws session        # Iniciar sesion SSO (aws sso login)
+yappy aws mfa             # Generar token MFA + configurar perfil
+```
+
+### Base de datos
+
+```bash
+yappy db up dev           # Tunnel + token (bloquea)
+yappy db up dev -d        # Tunnel + token (background)
+yappy db up qa -r         # Tunnel + auto-refresh cada 12 min
+yappy db up qa -r -d      # Tunnel + auto-refresh en background
+yappy db refresh dev      # Solo regenerar token y guardar en .env.local
+```
+
+### SSM Tunnels (port-forwarding)
+
+```bash
+yappy ssm connect 8080 qa cap              # Tunnel a cluster (bloquea)
+yappy ssm connect 8080 qa cap -d           # Tunnel a cluster (background)
+yappy ssm connect 8080,9090,3000 qa cap    # Multiples puertos (bloquea)
+yappy ssm connect "8080 9090 3000" qa cap  # Multiples puertos (bloquea)
+yappy ssm producer qa                # Tunnel a producer (bloquea)
+yappy ssm producer qa -d             # Tunnel a producer (background)
+yappy ssm kafdrop qa                 # Tunnel a Kafdrop UI
+yappy ssm databricks dev             # Tunnel a Databricks
+yappy ssm kill                       # Matar todos los túneles SSM activos
+```
+
+### Kafka local
+
+```bash
+yappy kafka up server                # Iniciar Kafka (KRaft)
+yappy kafka up server -d             # Iniciar Kafka en background
+yappy kafka up ui                    # Iniciar Kafdrop UI
+yappy kafka up ui -d                 # Kafdrop UI en background
+yappy kafka up clean                 # Resetear storage de Kafka
+yappy kafka down                     # Detener Kafka
+```
+
+### Workflows compuestos
+
+```bash
+yappy workflow debug-local qa        # Sesion AWS + tunnel DB + Kafka + agents
+```
+
+### Utilidades
+
+```bash
+yappy version                        # Version instalada
+yappy config                         # Mostrar config actual
+yappy config dev                     # Mostrar config de un ambiente
+yappy home                           # Ir al directorio del proyecto
+yappy setup                          # Onboarding inicial
+yappy reload                         # Reinstalar paquete + recargar .bashrc
+yappy edit                           # Abrir proyecto en VS Code
+yappy py-purge                       # Limpiar cache pip
+```
+
+---
+
+## Flujo tipico: debug local
+
+```bash
+# 1. Iniciar sesion AWS
+yappy aws session
+
+# 2. Tunnel a base de datos + auto-refresh
+yappy db up qa -d
+
+# 3. (Opcional) Tunnel a cluster para probar endpoints
+yappy ssm connect 8080 qa cap -d
+
+# 4. Iniciar Kafka
+yappy kafka up server -d
+
+# 5. Iniciar Kafdrop
+yappy kafka up ui -d
+
+# 6. Levantar kafka-agents (pendiente integracion)
+
+# 7. Al terminar, limpiar
+yappy ssm kill
+yappy kafka down
+```
+
+## Detener procesos en background
+
+| Que inicio | Como detener |
+|---|---|
+| `yappy db up ... -d` | `yappy ssm kill` |
+| `yappy ssm connect ... -d` | `yappy ssm kill` |
+| `yappy kafka up server -d` | `yappy kafka down` |
+| `yappy kafka up ui -d` | `yappy kafka down` |
