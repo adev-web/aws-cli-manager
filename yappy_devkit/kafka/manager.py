@@ -9,6 +9,7 @@ import typer
 
 from ..base import BaseCommand
 from ..config import Config
+from ..deprecation import warn_deprecated
 from ..logger import success, info, warn, die, raw
 
 app = typer.Typer(help="Local Kafka management")
@@ -62,6 +63,7 @@ def up(
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
 ):
     """Start local Kafka (server), UI (kafdrop), or clean (reset storage)."""
+    warn_deprecated("kafka up", "run kafka")
     if action not in ("server", "ui", "clean"):
         die("Invalid action. Use: server, ui, or clean")
 
@@ -183,6 +185,7 @@ def down(
     target: str = typer.Argument("server", help="server or ui"),
 ):
     """Stop local Kafka server or UI."""
+    warn_deprecated("kafka down", "stop kafka")
     if target not in ("server", "ui"):
         die("Invalid target. Use: server or ui")
 

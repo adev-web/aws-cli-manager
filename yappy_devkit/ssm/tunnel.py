@@ -3,6 +3,7 @@ import subprocess
 import typer
 from ..base import BaseCommand
 from ..config import Config
+from ..deprecation import warn_deprecated
 from ..logger import success, info, die
 
 app = typer.Typer(help="SSM port-forwarding tunnels")
@@ -29,6 +30,7 @@ def connect(
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
 ):
     """Port-forward to a microservice cluster (connectp)."""
+    warn_deprecated("ssm connect", "run tunnel")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -87,6 +89,7 @@ def producer(
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
 ):
     """Port-forward to Kafka producer instance (producerp)."""
+    warn_deprecated("ssm producer", "run tunnel")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -118,6 +121,7 @@ def kafdrop(
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
 ):
     """Port-forward to Kafdrop UI (up_kafdrop)."""
+    warn_deprecated("ssm kafdrop", "run tunnel kafdrop")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -151,6 +155,7 @@ def databricks(
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
 ):
     """Port-forward to Databricks workspace (up_databricks)."""
+    warn_deprecated("ssm databricks", "run tunnel databricks")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -186,6 +191,7 @@ def databricks(
 @app.command()
 def kill():
     """Kill all active SSM sessions (kill_ssm)."""
+    warn_deprecated("ssm kill", "stop tunnel")
     info("Killing SSM sessions...")
     ssm_cmd.kill_ssm()
     success("SSM sessions terminated")

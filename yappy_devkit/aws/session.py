@@ -16,6 +16,7 @@ from botocore.exceptions import ClientError
 
 from ..base import BaseCommand, _aws_cmd
 from ..config import Config
+from ..deprecation import warn_deprecated
 from ..logger import success, info, die
 
 app = typer.Typer(help="AWS session management")
@@ -73,6 +74,7 @@ def _sso_cache_path(session_name: str) -> Path:
 @app.command()
 def session(profile: str | None = None):
     """Login to AWS SSO via browser (replaces 'aws sso login')."""
+    warn_deprecated("aws session", "login aws")
     cfg_profile = profile or _cfg.profile
     config = _parse_aws_config()
 
@@ -164,6 +166,7 @@ def mfa(
     token: str = typer.Argument(..., help="MFA token code"),
 ):
     """Generate temporary AWS credentials via MFA."""
+    warn_deprecated("aws mfa", "login mfa")
     aws_cmd.check_requirements("aws")
     base_profile = _cfg.get("AWS_MFA_PROFILE", "base")
 

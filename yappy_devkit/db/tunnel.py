@@ -11,6 +11,7 @@ import typer
 
 from ..base import BaseCommand
 from ..config import Config
+from ..deprecation import warn_deprecated
 from ..logger import success, info, warn, die
 
 app = typer.Typer(help="Database tunnel management")
@@ -107,6 +108,7 @@ def _start_refresher(cfg: Config, stop_event: threading.Event):
 @app.command()
 def refresh(env: str = typer.Argument(..., help="Environment: dev, qa, ...")):
     """Regenerate DB auth token and save to .env.local."""
+    warn_deprecated("db refresh", "run db --refresh")
     DbCommand.validate_env(env)
     cfg = Config.with_env(env)
 
@@ -133,6 +135,7 @@ def up(
     ),
 ):
     """Start SSM tunnel to Aurora database."""
+    warn_deprecated("db up", "run db")
     DbCommand.validate_env(env)
     db_cmd.check_requirements("aws")
     cfg = Config.with_env(env)

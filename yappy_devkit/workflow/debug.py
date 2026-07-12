@@ -8,6 +8,7 @@ import typer
 
 from ..base import BaseCommand, _aws_cmd
 from ..config import Config
+from ..deprecation import warn_deprecated
 from ..logger import info, success, warn, die
 
 app = typer.Typer(help="Composite workflows")
@@ -36,7 +37,7 @@ def debug_local(
     ),
 ):
     """[deprecated] Use 'yappy workflow executor' instead."""
-    warn("[bold]DEPRECATED:[/bold] use [bold]'yappy workflow executor'[/bold] instead — it's more flexible and editable.")
+    warn_deprecated("workflow debug-local", "run workflow")
     WorkflowCommand.validate_env(env)
     wf_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -206,6 +207,7 @@ def executor(
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
 ):
     """Run or edit the executor script."""
+    warn_deprecated("workflow executor", "run workflow")
     executor_path = Path(__file__).resolve().parent / "executor.py"
 
     if action == "edit":

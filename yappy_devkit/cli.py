@@ -13,6 +13,11 @@ from .db.tunnel import app as db_app
 from .ssm.tunnel import CLUSTER_ALIASES, app as ssm_app
 from .kafka.manager import app as kafka_app
 from .workflow.debug import app as workflow_app
+from .verbs.run import run_app
+from .verbs.stop import stop_app
+from .verbs.login import login_app
+from .verbs.exec import exec_app
+from .verbs.logs import logs_app
 
 
 def _win_to_posix(path: str) -> str:
@@ -27,11 +32,19 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-app.add_typer(aws_app, name="aws", help="AWS session management")
-app.add_typer(db_app, name="db", help="Database tunnel management")
-app.add_typer(ssm_app, name="ssm", help="SSM port-forwarding tunnels")
-app.add_typer(kafka_app, name="kafka", help="Local Kafka management")
-app.add_typer(workflow_app, name="workflow", help="Composite workflows")
+# Viejos (deprecated)
+app.add_typer(aws_app, name="aws", help="AWS session management [deprecated]")
+app.add_typer(db_app, name="db", help="Database tunnel management [deprecated]")
+app.add_typer(ssm_app, name="ssm", help="SSM tunnels [deprecated]")
+app.add_typer(kafka_app, name="kafka", help="Local Kafka [deprecated]")
+app.add_typer(workflow_app, name="workflow", help="Workflows [deprecated]")
+
+# Nuevos (Docker-like)
+app.add_typer(run_app, name="run", help="Start a resource")
+app.add_typer(stop_app, name="stop", help="Stop a resource")
+app.add_typer(login_app, name="login", help="Authenticate with AWS")
+app.add_typer(exec_app, name="exec", help="Execute commands in environment context")
+app.add_typer(logs_app, name="logs", help="Show logs of managed processes")
 
 
 @app.command()
