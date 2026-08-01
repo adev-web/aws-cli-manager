@@ -6,11 +6,8 @@ __pycache__/
 .env.qa
 .env.example
 .env.*
-config/env.base
-config/env.dev
-config/env.qa
-config/env.dev.example
-config/env.qa.example
+config/env.*
+!config/env.*.example
 *.egg-info/
 dist/
 build/

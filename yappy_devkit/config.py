@@ -70,11 +70,15 @@ class Config:
         return sorted(envs)
 
     def get(self, key: str, default: str | None = None) -> str | None:
-        # Environment variables take precedence over config files
-        env_val = os.environ.get(key)
-        if env_val is not None:
-            return env_val
-        return self._values.get(key, default)
+        # Precedence: (1) config files, (2) explicit YAPPY_* overrides,
+        # (3) plain os.environ as a last resort when the key is not defined
+        # in any config file.
+        if key in self._values:
+            return self._values[key]
+        yappy_val = os.environ.get(f"YAPPY_{key}")
+        if yappy_val is not None:
+            return yappy_val
+        return os.environ.get(key, default)
 
     def require(self, key: str) -> str:
         val = self.get(key)

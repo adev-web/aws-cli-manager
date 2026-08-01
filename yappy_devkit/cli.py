@@ -47,6 +47,22 @@ app.add_typer(exec_app, name="exec", help="Execute commands in environment conte
 app.add_typer(logs_app, name="logs", help="Show logs of managed processes")
 
 
+_FALLBACK_VERSION = "0.11.0"
+
+
+def _read_version() -> str:
+    project_root = Path(__file__).resolve().parent.parent
+    pyproject = project_root / "pyproject.toml"
+    if pyproject.exists():
+        for line in pyproject.read_text().splitlines():
+            stripped = line.strip()
+            if stripped.startswith("version"):
+                value = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+                if value:
+                    return value
+    return _FALLBACK_VERSION
+
+
 @app.command()
 def version():
     """Show the installed version."""
@@ -54,7 +70,7 @@ def version():
     try:
         ver = _v("aws-cli-manager")
     except Exception:
-        ver = "0.1.0 (dev)"
+        ver = _read_version()
     info(f"aws-cli-manager v{ver}")
 
 
@@ -108,10 +124,11 @@ def init(shell: str = typer.Argument("bash", help="Shell type: bash, zsh, powers
     """Generate shell integration — add to .bashrc: eval "$(yappy init bash)"."""
     if shell == "powershell":
         print(r"""function yappy {
-  if ($args[0] -eq "workspace") { Set-Location (yappy workspace) }
-  elseif ($args[0] -eq "home") { Set-Location (yappy home) }
-  elseif ($args[0] -eq "reload") { yappy reload; . $PROFILE }
-  else { yappy @args }
+  $script:YappyExe = (Get-Command yappy -CommandType Application).Source
+  if ($args[0] -eq "workspace") { Set-Location (& $script:YappyExe workspace) }
+  elseif ($args[0] -eq "home") { Set-Location (& $script:YappyExe home) }
+  elseif ($args[0] -eq "reload") { & $script:YappyExe reload; . $PROFILE }
+  else { & $script:YappyExe @args }
 }""")
         return
 

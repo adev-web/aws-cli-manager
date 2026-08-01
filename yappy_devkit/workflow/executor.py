@@ -5,7 +5,6 @@ def executor(environment: str = "dev") -> tuple:
     session = Session(environment).start()
 
     db = session.database()
-    print(f"DB password: {db.password}")
     print(f"DB tunnel ready on localhost:{db.port}")
 
     cap = session.multiple.pf(ports=[8402, 8403], load_balance="cap")

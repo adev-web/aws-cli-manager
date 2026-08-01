@@ -16,7 +16,7 @@ def run_db(
 ):
     """Start SSM tunnel to Aurora database."""
     from ..db.tunnel import up as _old_db_up
-    _old_db_up(env, auto_refresh=auto_refresh, detach=detach, keep_alive=keep_alive)
+    _old_db_up(env, auto_refresh=auto_refresh, detach=detach, keep_alive=keep_alive, quiet_deprecation=True)
 
 
 @run_app.command(name="tunnel")
@@ -29,18 +29,18 @@ def run_tunnel(
     """Start an SSM tunnel."""
     if target == "producer":
         from ..ssm.tunnel import producer as _old_producer
-        _old_producer(env, detach=detach)
+        _old_producer(env, detach=detach, quiet_deprecation=True)
     elif target == "kafdrop":
         from ..ssm.tunnel import kafdrop as _old_kafdrop
-        _old_kafdrop(env, detach=detach)
+        _old_kafdrop(env, detach=detach, quiet_deprecation=True)
     elif target == "databricks":
         from ..ssm.tunnel import databricks as _old_databricks
-        _old_databricks(env, detach=detach)
+        _old_databricks(env, detach=detach, quiet_deprecation=True)
     else:
         if not cap:
             die("cap is required when target is a port number or cluster name")
         from ..ssm.tunnel import connect as _old_connect
-        _old_connect(target, env, cap, detach=detach)
+        _old_connect(target, env, cap, detach=detach, quiet_deprecation=True)
 
 
 @run_app.command(name="kafka")
@@ -50,7 +50,7 @@ def run_kafka(
 ):
     """Start local Kafka (server), UI (kafdrop), or clean (reset storage)."""
     from ..kafka.manager import up as _old_kafka_up
-    _old_kafka_up(target, detach=detach)
+    _old_kafka_up(target, detach=detach, quiet_deprecation=True)
 
 
 @run_app.command(name="workflow")
@@ -60,4 +60,4 @@ def run_workflow(
 ):
     """Run or edit the executor workflow."""
     from ..workflow.debug import executor as _old_executor
-    _old_executor(action, env=env)
+    _old_executor(action, env=env, quiet_deprecation=True)

@@ -6,7 +6,7 @@ _OLD_TO_NEW: dict[str, str] = {
     "db up":        "run db",
     "db refresh":   "run db --refresh",
     "ssm connect":  "run tunnel",
-    "ssm producer": "run tunnel",
+    "ssm producer": "run tunnel producer <env>",
     "ssm kafdrop":  "run tunnel kafdrop",
     "ssm databricks": "run tunnel databricks",
     "ssm kill":     "stop tunnel",
@@ -15,7 +15,7 @@ _OLD_TO_NEW: dict[str, str] = {
     "aws session":  "login aws",
     "aws mfa":      "login mfa",
     "workflow debug-local": "run workflow",
-    "workflow executor":    "run workflow",
+    "workflow executor":    "run workflow <env>",
 }
 
 

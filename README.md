@@ -1,4 +1,4 @@
-git push# aws-cli-manager
+# aws-cli-manager
 
 CLI toolkit para el flujo de desarrollo diario en Yappy: sesiones AWS, túneles SSM,
 conexión a bases de datos Aurora, Kafka local y más.
@@ -38,11 +38,11 @@ Estructura esperada en disco (configurable vía `KAFKA_PATH` en `config/env.base
 {KAFKA_PATH}/kafka-ui/          # main.jar (Kafdrop)
 ```
 
-Por defecto `KAFKA_PATH=C:\Development\config\kafka`:
+Por defecto `KAFKA_PATH=C:\Development\kafka`:
 
 ```
-C:\Development\config\kafka\kafka-core/
-C:\Development\config\kafka\kafka-ui/
+C:\Development\kafka\kafka-core/
+C:\Development\kafka\kafka-ui/
 ```
 
 ### 5. Java 17+ (solo para Kafdrop UI)
@@ -59,14 +59,14 @@ java --version
 git clone git@github.com:adev-web/aws-cli-manager.git
 cd aws-cli-manager
 pip install -e .
-yappy setup               # Configura shell, verifica dependencias, crea configs desde .example
+yappy setup               # Configura shell, verifica dependencias, crea config/env.base
 source ~/.bashrc
 ```
 
 `yappy setup` hace todo automáticamente:
 
 1. **Shell integration** — agrega `eval "$(yappy init bash)"` al `.bashrc`
-2. **Config files** — crea `env.base`, `env.dev`, `env.qa` desde los `.example` si no existen
+2. **Config files** — crea `config/env.base` desde `config/env.base.example` si no existe (los archivos de entorno como `env.dev`/`env.qa` deben crearse manualmente copiando un `.example`)
 3. **Dependencias** — verifica que `aws` y `session-manager-plugin` estén instalados
 4. **Perfil AWS** — verifica que el perfil configurado exista
 
@@ -74,7 +74,7 @@ Después del setup, editá los archivos de config con tus valores:
 
 ```bash
 yappy edit           # Abre el proyecto en VS Code
-# Editar config/env.base, config/env.dev, config/env.qa
+# Editar config/env.base (los archivos por entorno deben crearse a mano, p. ej. copiando config/env.environment.example a config/env.dev)
 ```
 
 ---
@@ -140,6 +140,43 @@ yappy setup                          # Onboarding inicial
 yappy reload                         # Reinstalar paquete + recargar .bashrc
 yappy edit                           # Abrir proyecto en VS Code
 yappy py-purge                       # Limpiar cache pip
+```
+
+---
+
+## Nueva sintaxis (Docker-like)
+
+La CLI soporta una sintaxis nueva inspirada en Docker, con retrocompatibilidad total:
+los comandos viejos (`yappy db up`, `yappy ssm ...`, `yappy kafka up ...`) siguen funcionando.
+
+```bash
+yappy run db dev              # Tunnel + token (bloquea)
+yappy run db dev -d           # Tunnel + token (background)
+yappy run db qa -r            # Tunnel + auto-refresh cada 12 min
+yappy run db qa -r -d         # Tunnel + auto-refresh en background
+
+yappy run tunnel 8080 qa cap  # Tunnel a cluster
+yappy run tunnel producer qa  # Tunnel a producer
+yappy run tunnel kafdrop qa   # Tunnel a Kafdrop UI
+yappy run tunnel databricks dev  # Tunnel a Databricks
+
+yappy run kafka server -d     # Kafka en background
+yappy run kafka ui -d         # Kafdrop UI en background
+yappy run kafka clean         # Resetear storage de Kafka
+yappy run workflow dev        # Ejecutar el workflow executor
+
+yappy stop kafka              # Detener Kafka server
+yappy stop kafka ui           # Detener Kafdrop UI
+yappy stop tunnel             # Matar túneles SSM activos
+
+yappy login aws               # Iniciar sesion SSO
+yappy login mfa <user> <token>  # Generar credenciales MFA
+
+yappy exec aws dev s3 ls      # Ejecutar aws con el profile/region del entorno
+
+yappy logs db dev             # Logs del tunnel de DB
+yappy logs kafka server -f    # Seguir logs de Kafka server
+yappy logs tunnel -n 100      # Ultimas 100 lineas de los túneles
 ```
 
 ---

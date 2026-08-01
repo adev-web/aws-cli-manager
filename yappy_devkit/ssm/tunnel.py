@@ -28,9 +28,11 @@ def connect(
     env: str = typer.Argument(..., help="Environment: dev, qa, ..."),
     cluster: str = typer.Argument(..., help="Cluster type: cap, cap2, or int"),
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
+    quiet_deprecation: bool = False,
 ):
     """Port-forward to a microservice cluster (connectp)."""
-    warn_deprecated("ssm connect", "run tunnel")
+    if not quiet_deprecation:
+        warn_deprecated("ssm connect", "run tunnel")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -87,9 +89,11 @@ def connect(
 def producer(
     env: str = typer.Argument(..., help="Environment: dev or qa"),
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
+    quiet_deprecation: bool = False,
 ):
     """Port-forward to Kafka producer instance (producerp)."""
-    warn_deprecated("ssm producer", "run tunnel")
+    if not quiet_deprecation:
+        warn_deprecated("ssm producer", "run tunnel producer <env>")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -119,9 +123,11 @@ def producer(
 def kafdrop(
     env: str = typer.Argument(..., help="Environment: dev or qa"),
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
+    quiet_deprecation: bool = False,
 ):
     """Port-forward to Kafdrop UI (up_kafdrop)."""
-    warn_deprecated("ssm kafdrop", "run tunnel kafdrop")
+    if not quiet_deprecation:
+        warn_deprecated("ssm kafdrop", "run tunnel kafdrop")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -153,9 +159,11 @@ def kafdrop(
 def databricks(
     env: str = typer.Argument(..., help="Environment: dev or qa"),
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
+    quiet_deprecation: bool = False,
 ):
     """Port-forward to Databricks workspace (up_databricks)."""
-    warn_deprecated("ssm databricks", "run tunnel databricks")
+    if not quiet_deprecation:
+        warn_deprecated("ssm databricks", "run tunnel databricks")
     SsmCommand.validate_env(env)
     ssm_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
@@ -189,9 +197,17 @@ def databricks(
 
 
 @app.command()
-def kill():
-    """Kill all active SSM sessions (kill_ssm)."""
-    warn_deprecated("ssm kill", "stop tunnel")
-    info("Killing SSM sessions...")
-    ssm_cmd.kill_ssm()
+def kill(
+    all: bool = typer.Option(False, "--all", "-a", help="Kill ALL SSM sessions (legacy global kill)"),
+    quiet_deprecation: bool = False,
+):
+    """Kill active SSM sessions (kill_ssm)."""
+    if not quiet_deprecation:
+        warn_deprecated("ssm kill", "stop tunnel")
+    if all:
+        info("Killing all SSM sessions...")
+        ssm_cmd.kill_ssm_all()
+    else:
+        info("Killing tracked SSM sessions...")
+        ssm_cmd.kill_ssm()
     success("SSM sessions terminated")

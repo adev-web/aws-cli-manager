@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import threading
@@ -9,6 +10,7 @@ from pathlib import Path
 import botocore.session
 import typer
 
+from .. import process_tracker
 from ..base import BaseCommand
 from ..config import Config
 from ..deprecation import warn_deprecated
@@ -68,8 +70,9 @@ def _clipboard(text: str):
         pass
 
 
-def _write_local_env(token: str):
-    env_local = Path(__file__).resolve().parent.parent.parent / "config" / ".env.local"
+def _write_local_env(token: str, env_local: Path | None = None):
+    if env_local is None:
+        env_local = Path(__file__).resolve().parent.parent.parent / "config" / ".env.local"
 
     try:
         existing = {}
@@ -83,6 +86,11 @@ def _write_local_env(token: str):
             existing["DB_USER"] = Config().aws_user or ""
         content = "\n".join(f"{k}={v}" for k, v in existing.items()) + "\n"
         env_local.write_text(content)
+        if os.name != "nt":
+            try:
+                os.chmod(env_local, 0o600)
+            except OSError:
+                pass
         success(f"Token saved to {env_local}")
     except Exception as e:
         warn(f"Could not write {env_local}: {e}")
@@ -105,10 +113,41 @@ def _start_refresher(cfg: Config, stop_event: threading.Event):
     t.start()
 
 
+def _start_detached_refresher(env: str) -> Path:
+    """Spawn a detached child that refreshes the DB token after the CLI exits."""
+    log_dir = Path.home() / ".yappy" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"db-refresher-{env}.log"
+    cmd = [sys.executable, "-m", "yappy_devkit.db.refresher", env]
+    kwargs = {
+        "stdout": log_path.open("ab"),
+        "stderr": subprocess.STDOUT,
+        "stdin": subprocess.DEVNULL,
+    }
+    if sys.platform == "win32":
+        kwargs["creationflags"] = (
+            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+    else:
+        kwargs["start_new_session"] = True
+    child = subprocess.Popen(cmd, **kwargs)
+    process_tracker.track_process(
+        pid=child.pid,
+        resource="tunnel",
+        target=env,
+        log_file=str(log_path),
+    )
+    return log_path
+
+
 @app.command()
-def refresh(env: str = typer.Argument(..., help="Environment: dev, qa, ...")):
+def refresh(
+    env: str = typer.Argument(..., help="Environment: dev, qa, ..."),
+    quiet_deprecation: bool = False,
+):
     """Regenerate DB auth token and save to .env.local."""
-    warn_deprecated("db refresh", "run db --refresh")
+    if not quiet_deprecation:
+        warn_deprecated("db refresh", "run db --refresh")
     DbCommand.validate_env(env)
     cfg = Config.with_env(env)
 
@@ -133,18 +172,19 @@ def up(
         False, "--keep-alive", "-k",
         help="Auto-reconnect tunnel if it drops",
     ),
+    quiet_deprecation: bool = False,
 ):
     """Start SSM tunnel to Aurora database."""
-    warn_deprecated("db up", "run db")
+    if not quiet_deprecation:
+        warn_deprecated("db up", "run db")
+    if keep_alive and detach:
+        die("--keep-alive and --detach are mutually exclusive")
     DbCommand.validate_env(env)
     db_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
 
     token = _generate_token(cfg)
     _write_local_env(token)
-
-    if keep_alive and detach:
-        die("--keep-alive and --detach are mutually exclusive")
 
     if auto_refresh:
         info(f"Starting auto-refresh tunnel to {env} (localhost:{cfg.db_port})...")
@@ -191,14 +231,15 @@ def up(
 
     if auto_refresh:
         success(f"Tunnel started (PID {proc.pid}) on localhost:{cfg.db_port}")
-        stop_event = threading.Event()
-        _start_refresher(cfg, stop_event)
 
         if detach:
+            _start_detached_refresher(env)
             success("Auto-refresh tunnel running in background (use 'yappy ssm kill' to stop)")
             time.sleep(2)
             return
 
+        stop_event = threading.Event()
+        _start_refresher(cfg, stop_event)
         info("Press Ctrl+C to stop tunnel and refresher")
         try:
             while True:
@@ -211,6 +252,7 @@ def up(
             proc.terminate()
             proc.wait(timeout=5)
             db_cmd.kill_ssm()
+            process_tracker.untrack_process(proc.pid)
             success("Tunnel stopped")
         return
 

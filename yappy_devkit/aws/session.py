@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import getpass
 import hashlib
 import json
 import os
@@ -47,6 +48,73 @@ def _parse_aws_config() -> dict[str, dict[str, str]]:
     return config
 
 
+def _read_ini(path: Path) -> tuple[list[str], dict[str, dict[str, str]]]:
+    """Return (section_order, sections) from a simple INI file."""
+    order: list[str] = []
+    sections: dict[str, dict[str, str]] = {}
+    current: str | None = None
+    if path.exists():
+        for line in path.read_text().splitlines():
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                current = stripped[1:-1].strip()
+                if current not in sections:
+                    sections[current] = {}
+                    order.append(current)
+            elif (
+                current is not None
+                and "=" in stripped
+                and not stripped.startswith(("#", ";"))
+            ):
+                k, v = stripped.split("=", 1)
+                sections[current][k.strip()] = v.strip()
+    return order, sections
+
+
+def _write_ini(path: Path, order: list[str], sections: dict[str, dict[str, str]]):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for name in order:
+        lines.append(f"[{name}]")
+        for k, v in sections[name].items():
+            lines.append(f"{k} = {v}")
+    path.write_text("\n".join(lines) + "\n")
+    if os.name != "nt":
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+
+
+def _write_mfa_credentials(profiles: list[str], creds: dict[str, str]):
+    """Write MFA credentials directly to ~/.aws, preserving other profiles.
+
+    Avoids `aws configure set aws_secret_access_key <secret>` subprocess calls
+    that leak the secret through the process list.
+    """
+    home = Path.home()
+    creds_path = home / ".aws" / "credentials"
+    config_path = home / ".aws" / "config"
+
+    order, sections = _read_ini(creds_path)
+    for prof in profiles:
+        if prof not in sections:
+            sections[prof] = {}
+            order.append(prof)
+        sections[prof]["aws_access_key_id"] = creds["AccessKeyId"]
+        sections[prof]["aws_secret_access_key"] = creds["SecretAccessKey"]
+        sections[prof]["aws_session_token"] = creds["SessionToken"]
+    _write_ini(creds_path, order, sections)
+
+    order_cfg, sections_cfg = _read_ini(config_path)
+    for prof in profiles:
+        cfg_name = f"profile {prof}"
+        if cfg_name not in sections_cfg:
+            sections_cfg[cfg_name] = {}
+            order_cfg.append(cfg_name)
+    _write_ini(config_path, order_cfg, sections_cfg)
+
+
 def _sso_oidc_client(region: str):
     """Create a botocore SSO-OIDC client without triggering credential_process."""
     saved = {}
@@ -72,9 +140,13 @@ def _sso_cache_path(session_name: str) -> Path:
 
 
 @app.command()
-def session(profile: str | None = None):
+def session(
+    profile: str | None = None,
+    quiet_deprecation: bool = False,
+):
     """Login to AWS SSO via browser (replaces 'aws sso login')."""
-    warn_deprecated("aws session", "login aws")
+    if not quiet_deprecation:
+        warn_deprecated("aws session", "login aws")
     cfg_profile = profile or _cfg.profile
     config = _parse_aws_config()
 
@@ -163,10 +235,14 @@ def session(profile: str | None = None):
 @app.command()
 def mfa(
     user: str = typer.Argument(..., help="MFA username"),
-    token: str = typer.Argument(..., help="MFA token code"),
+    token: str | None = typer.Argument(None, help="MFA token code (prompted if not provided)"),
+    quiet_deprecation: bool = False,
 ):
     """Generate temporary AWS credentials via MFA."""
-    warn_deprecated("aws mfa", "login mfa")
+    if not quiet_deprecation:
+        warn_deprecated("aws mfa", "login mfa")
+    if not token:
+        token = getpass.getpass("MFA code: ")
     aws_cmd.check_requirements("aws")
     base_profile = _cfg.get("AWS_MFA_PROFILE", "base")
 
@@ -201,21 +277,6 @@ def mfa(
         die("Failed to parse MFA credentials")
 
     profiles = [_cfg.profile, "mfa"]
-    for prof in profiles:
-        subprocess.run(
-            [*_aws_cmd(), "configure", "set", "aws_access_key_id",
-             creds["AccessKeyId"], "--profile", prof],
-            capture_output=True,
-        )
-        subprocess.run(
-            [*_aws_cmd(), "configure", "set", "aws_secret_access_key",
-             creds["SecretAccessKey"], "--profile", prof],
-            capture_output=True,
-        )
-        subprocess.run(
-            [*_aws_cmd(), "configure", "set", "aws_session_token",
-             creds["SessionToken"], "--profile", prof],
-            capture_output=True,
-        )
+    _write_mfa_credentials(profiles, creds)
 
     success(f"MFA credentials configured for profiles: {', '.join(profiles)}")

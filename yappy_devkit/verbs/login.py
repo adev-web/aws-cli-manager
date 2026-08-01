@@ -11,7 +11,7 @@ def login_aws(
 ):
     """Login to AWS SSO via browser (replaces 'aws sso login')."""
     from ..aws.session import session as _old_session
-    _old_session(profile)
+    _old_session(profile, quiet_deprecation=True)
 
 
 @login_app.command(name="mfa")
@@ -21,4 +21,4 @@ def login_mfa(
 ):
     """Generate temporary AWS credentials via MFA."""
     from ..aws.session import mfa as _old_mfa
-    _old_mfa(user, token)
+    _old_mfa(user, token, quiet_deprecation=True)

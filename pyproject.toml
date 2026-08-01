@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aws-cli-manager"
-version = "0.10.0"
+version = "0.11.0"
 description = "AWS CLI Manager - orquestador de sesiones AWS, SSM, RDS, Kafka y port-forwarding"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,8 +14,16 @@ dependencies = [
     "botocore>=1.34.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
 [project.scripts]
 yappy = "yappy_devkit.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["yappy_devkit"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

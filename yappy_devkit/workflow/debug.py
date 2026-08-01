@@ -6,8 +6,10 @@ from pathlib import Path
 
 import typer
 
+from ..api.kafka import KafkaService
 from ..base import BaseCommand, _aws_cmd
 from ..config import Config
+from ..db.tunnel import _generate_token, _write_local_env
 from ..deprecation import warn_deprecated
 from ..logger import info, success, warn, die
 
@@ -35,14 +37,14 @@ def debug_local(
         None, "--kafka-agents-path", "-k",
         help="Path to kafka-agents project (optional)",
     ),
+    quiet_deprecation: bool = False,
 ):
     """[deprecated] Use 'yappy workflow executor' instead."""
-    warn_deprecated("workflow debug-local", "run workflow")
+    if not quiet_deprecation:
+        warn_deprecated("workflow debug-local", "run workflow")
     WorkflowCommand.validate_env(env)
     wf_cmd.check_requirements("aws")
     cfg = Config.with_env(env)
-
-    kafka_path = Path(cfg.kafka_core_path)
 
     info(f"Starting debug workflow for [bold]{env}[/bold]")
     print()
@@ -69,6 +71,8 @@ def debug_local(
         success("AWS session active")
 
     info("[2/5] Starting database tunnel...")
+    token = _generate_token(cfg)
+    _write_local_env(token)
     db_proc = wf_cmd.ssm_tunnel(
         instance=cfg.require("AWS_INSTANCE"),
         port=int(cfg.get("AWS_PORT", "53360")),
@@ -84,46 +88,11 @@ def debug_local(
         warn(f"Database tunnel exited prematurely (code {db_proc.returncode})")
 
     info("[3/5] Starting local Kafka...")
-    server_bat = kafka_path / "bin" / "windows" / "kafka-server-start.bat"
-    props = kafka_path / "config" / "kraft" / "server.properties"
-    if server_bat.exists() and props.exists():
-        kafka_proc = subprocess.Popen(
-            [str(server_bat), str(props)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT,
-        )
-        time.sleep(2)
-        if kafka_proc.poll() is None:
-            success("Kafka server started on localhost:9092")
-        else:
-            warn("Kafka server may not have started correctly")
-    else:
-        warn(f"Kafka not found at {kafka_path}")
-        kafka_proc = None
+    kafka_svc = KafkaService(cfg)
+    kafka_proc = kafka_svc.up("server", detach=True)
 
     info("[4/5] Starting Kafdrop UI...")
-    ui_jar = Path(cfg.kafka_ui_path) / "main.jar"
-    ui_config = Path(cfg.kafka_ui_path) / "config.yml"
-    if ui_jar.exists():
-        ui_cmd = [
-            "java", "-jar", str(ui_jar),
-            "--server.port=8080",
-        ]
-        if ui_config.exists():
-            ui_cmd.append(f"--spring.config.additional-location=file:{ui_config}")
-        ui_proc = subprocess.Popen(
-            ui_cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT,
-        )
-        time.sleep(2)
-        if ui_proc.poll() is None:
-            success("Kafdrop UI started on http://localhost:8080")
-        else:
-            warn("Kafdrop UI may not have started correctly")
-    else:
-        warn(f"Kafdrop UI jar not found at {ui_jar}")
-        ui_proc = None
+    ui_proc = kafka_svc.up("ui", detach=True)
 
     info("[5/5] Checking kafka-agents...")
     agents_path = kafka_agents_path or str(
@@ -161,6 +130,7 @@ def debug_local(
         if ui_proc:
             ui_proc.terminate()
             success("Kafdrop UI stopped")
+        kafka_svc.cleanup()
         wf_cmd.kill_ssm()
         success("All services stopped")
 
@@ -173,7 +143,6 @@ def executor(environment: str = "dev") -> tuple:
     session = Session(environment).start()
 
     db = session.database()
-    print(f"DB password: {db.password}")
     print(f"DB tunnel ready on localhost:{db.port}")
 
     cap = session.multiple.pf(ports=[8402, 8403], load_balance="cap")
@@ -205,9 +174,11 @@ def executor(
     action: str = typer.Argument("run", help="run or edit"),
     env: str = typer.Option("dev", "--env", "-e", help="Environment"),
     detach: bool = typer.Option(False, "--detach", "-d", help="Run in background"),
+    quiet_deprecation: bool = False,
 ):
     """Run or edit the executor script."""
-    warn_deprecated("workflow executor", "run workflow")
+    if not quiet_deprecation:
+        warn_deprecated("workflow executor", "run workflow <env>")
     executor_path = Path(__file__).resolve().parent / "executor.py"
 
     if action == "edit":
