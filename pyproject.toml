@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aws-cli-manager"
-version = "0.11.0"
+version = "1.0.0"
 description = "AWS CLI Manager - orquestador de sesiones AWS, SSM, RDS, Kafka y port-forwarding"
 requires-python = ">=3.10"
 dependencies = [
