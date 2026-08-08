@@ -83,7 +83,7 @@ def _format_kafka_storage(core: Path) -> bool:
     uuid = result.stdout.strip()
     result = subprocess.run(
         [bash, str(storage_sh), "format", "-t", uuid, "-c", str(props),
-         "--no-initial-controllers"],
+         "--standalone"],
         capture_output=True, text=True, check=False, env=env,
     )
     if result.returncode == 0:

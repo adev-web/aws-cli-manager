@@ -353,7 +353,7 @@ def _setup_config(config_dir: Path):
                 content = example.read_text()
                 target.write_text(content)
                 success(f"  Created {target_name} — edit values before using")
-                info(f"    → yappy edit")
+                info(f"    -> yappy edit")
 
 
 @app.command()

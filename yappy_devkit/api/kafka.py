@@ -203,9 +203,25 @@ class KafkaService:
             return None
         return result.stdout.strip()
 
+    def _get_log_dirs(self) -> list[Path]:
+        """Parse log.dirs from server.properties."""
+        props = self._kafka_core / "config" / "kraft" / "server.properties"
+        if not props.exists():
+            return []
+        dirs = []
+        for line in props.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("log.dirs="):
+                value = line.split("=", 1)[1]
+                for d in value.split(","):
+                    p = Path(d.strip())
+                    if not p.is_absolute():
+                        p = self._kafka_core / p
+                    dirs.append(p)
+        return dirs
+
     def clean(self) -> None:
         _ensure_windows()
-        logs_dir = self._kafka_core / "temp" / "kraft" / "kafka-logs"
         kafka_logs = self._kafka_core / "logs"
 
         raw("Reiniciando el almacenamiento de Kafka...")
@@ -219,11 +235,13 @@ class KafkaService:
                 return
             try:
                 shutil.rmtree(path, onerror=_on_rm_error)
-                raw(f"  - logs eliminados: {path.name}")
+                raw(f"  - logs eliminados: {path}")
             except PermissionError as e:
                 raw(f"  - no se pudo eliminar {path}: {e}")
 
-        _rm(logs_dir)
+        # Clean log.dirs from server.properties (e.g. /tmp/kraft-combined-logs)
+        for log_dir in self._get_log_dirs():
+            _rm(log_dir)
         _rm(kafka_logs)
 
         raw("")
@@ -238,7 +256,7 @@ class KafkaService:
         raw("Formateando el storage...")
         output = self._run_kafka_tool(
             "kafka.tools.StorageTool",
-            ["format", "-t", uuid, "-c", str(props), "--no-initial-controllers"],
+            ["format", "-t", uuid, "-c", str(props), "--standalone"],
         )
         if output is not None and ("Formatting" in output or output == ""):
             raw("Storage reset completado")
