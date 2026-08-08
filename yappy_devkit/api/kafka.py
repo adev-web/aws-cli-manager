@@ -85,7 +85,7 @@ class KafkaService:
         self._log_dir.mkdir(parents=True, exist_ok=True)
         placeholder = self._log_dir / f"kafka-{target}.log"
         handle = placeholder.open("ab")
-        proc = subprocess.Popen(cmd, stdout=handle, stderr=subprocess.STDOUT)
+        proc = subprocess.Popen(cmd, stdout=handle, stderr=subprocess.STDOUT, cwd=str(self._log_dir))
         handle.close()
 
         log_path = self._log_dir / f"kafka-{target}-{proc.pid}.log"
