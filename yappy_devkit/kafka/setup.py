@@ -54,11 +54,23 @@ def _extract(tar_path: Path, dest: Path) -> bool:
 
 def _format_kafka_storage(core: Path) -> bool:
     """Format Kafka storage for KRaft. Returns True if ok."""
+    import shutil as _shutil
     storage_sh = core / "bin" / "kafka-storage.sh"
     props = core / "config" / "kraft" / "server.properties"
 
     if not storage_sh.exists() or not props.exists():
         return False
+
+    # Clean old storage before formatting
+    for line in props.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("log.dirs="):
+            for d in line.split("=", 1)[1].split(","):
+                p = Path(d.strip())
+                if not p.is_absolute():
+                    p = core / p
+                if p.exists():
+                    _shutil.rmtree(p, ignore_errors=True)
 
     # Find bash (Git Bash on Windows)
     bash = _find_bash()
