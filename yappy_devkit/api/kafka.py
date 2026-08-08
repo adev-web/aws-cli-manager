@@ -168,6 +168,12 @@ class KafkaService:
                 webbrowser.open("http://localhost:8080")
             return proc
 
+        # Open browser before blocking
+        if sys.platform == "win32":
+            os.system('start "" "http://localhost:8080"')
+        else:
+            import webbrowser
+            webbrowser.open("http://localhost:8080")
         try:
             subprocess.run(cmd, check=False)
         except KeyboardInterrupt:
