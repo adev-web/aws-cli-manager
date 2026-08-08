@@ -117,7 +117,6 @@ def producer(
         proc, detach,
         name="Producer tunnel",
         local_port=3000,
-        browser_url="http://localhost:3000/",
     )
 
 
