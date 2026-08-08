@@ -465,15 +465,17 @@ def uninstall():
     except FileNotFoundError:
         warn("  jps not found — skipping process check")
 
-    # 2. Delete Kafka binaries and configs
+    # 2. Delete Kafka binaries (keep config/)
     print()
     info("Kafka files:")
     kafka_dir = project_root / "devkit" / "kafka"
-    if kafka_dir.exists():
-        shutil.rmtree(kafka_dir)
-        success(f"  Removed {kafka_dir}")
-    else:
-        success("  Not found (already clean)")
+    for name in ("kafka-core", "kafka-ui"):
+        d = kafka_dir / name
+        if d.exists():
+            shutil.rmtree(d)
+            success(f"  Removed {d}")
+    if not (kafka_dir / "kafka-core").exists() and not (kafka_dir / "kafka-ui").exists():
+        success("  Binaries already clean")
 
     # 3. Delete ~/.yappy (logs + tracker)
     print()
