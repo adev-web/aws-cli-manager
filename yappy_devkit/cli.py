@@ -444,7 +444,9 @@ def setup():
 
 
 @app.command()
-def uninstall():
+def uninstall(
+    purge: bool = typer.Option(False, "--purge", help="Remove ALL dependencies (may break other packages)"),
+):
     """Remove all yappy artifacts: Kafka, logs, tracker, shell integration."""
     import shutil
 
@@ -572,7 +574,7 @@ def uninstall():
             for line in check.stdout.splitlines():
                 if line.startswith("Required-by:"):
                     required_by = line.split(":", 1)[1].strip()
-            if not required_by:
+            if purge or not required_by:
                 subprocess.run(
                     [sys.executable, "-m", "pip", "uninstall", dep, "-y"],
                     capture_output=True,
