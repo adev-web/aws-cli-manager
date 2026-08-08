@@ -525,6 +525,9 @@ def uninstall():
 
     print()
     success("Uninstall complete. Repo is clean.")
+    print()
+    info("To remove the Python package, run:")
+    info("  pip uninstall yappy-cli-manager")
 
 
 if __name__ == "__main__":
