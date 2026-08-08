@@ -18,6 +18,7 @@ scripts/mysql-*/
 # Kafka binaries (download separately)
 devkit/kafka/kafka-core/
 devkit/kafka/kafka-ui/
+devkit/kafka/temp-logs/
 
 # Kafka logs
 *.log

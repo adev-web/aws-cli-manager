@@ -73,7 +73,7 @@ class KafkaService:
         self._kafka_core = Path(self._cfg.kafka_core_path)
         self._kafka_ui = Path(self._cfg.kafka_ui_path)
         self._procs: list[subprocess.Popen] = []
-        self._log_dir = Path.home() / ".yappy" / "logs"
+        self._log_dir = Path(self._cfg.kafka_path) / "temp-logs"
 
     def _spawn_detached(self, cmd: list[str], target: str) -> subprocess.Popen:
         """Spawn a background process with output captured to a real log file.

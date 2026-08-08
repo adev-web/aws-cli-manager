@@ -477,7 +477,7 @@ def uninstall():
     print()
     info("Kafka files:")
     kafka_dir = project_root / "devkit" / "kafka"
-    for name in ("kafka-core", "kafka-ui"):
+    for name in ("kafka-core", "kafka-ui", "temp-logs"):
         d = kafka_dir / name
         if d.exists():
             shutil.rmtree(d)
@@ -485,7 +485,7 @@ def uninstall():
     if not (kafka_dir / "kafka-core").exists() and not (kafka_dir / "kafka-ui").exists():
         success("  Binaries already clean")
 
-    # 3. Delete ~/.yappy (logs + tracker)
+    # 3. Delete ~/.yappy (tracker)
     print()
     info("Cache and logs:")
     if yappy_home.exists():

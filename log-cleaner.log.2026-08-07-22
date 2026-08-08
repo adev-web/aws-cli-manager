@@ -1,0 +1,6 @@
+[2026-08-07 22:41:02,610] INFO Starting the log cleaner (org.apache.kafka.storage.internals.log.LogCleaner)
+[2026-08-07 22:41:02,645] INFO [kafka-log-cleaner-thread-0]: Starting (org.apache.kafka.storage.internals.log.LogCleaner$CleanerThread)
+[2026-08-07 22:41:44,396] INFO Starting the log cleaner (org.apache.kafka.storage.internals.log.LogCleaner)
+[2026-08-07 22:41:44,431] INFO [kafka-log-cleaner-thread-0]: Starting (org.apache.kafka.storage.internals.log.LogCleaner$CleanerThread)
+[2026-08-07 22:42:29,575] INFO Starting the log cleaner (org.apache.kafka.storage.internals.log.LogCleaner)
+[2026-08-07 22:42:29,613] INFO [kafka-log-cleaner-thread-0]: Starting (org.apache.kafka.storage.internals.log.LogCleaner$CleanerThread)
