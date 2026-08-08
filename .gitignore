@@ -14,3 +14,10 @@ build/
 .idea/
 scripts/mysql-*.zip
 scripts/mysql-*/
+
+# Kafka binaries (download separately)
+devkit/kafka/kafka-core/
+devkit/kafka/kafka-ui/
+
+# Kafka logs
+*.log

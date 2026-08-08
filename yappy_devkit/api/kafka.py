@@ -14,8 +14,11 @@ from ..logger import info, success, warn, die, raw
 
 
 def _kafka_bin(cfg: Config, script: str) -> Path:
-    """Resolve a bin/windows/*.bat script for the configured Kafka install."""
-    return Path(cfg.kafka_core_path) / "bin" / "windows" / script
+    """Resolve a bin/*.sh script for the configured Kafka install.
+
+    Uses bash scripts instead of .bat to avoid Windows path length issues.
+    """
+    return Path(cfg.kafka_core_path) / "bin" / script
 
 
 def _ensure_windows():
@@ -102,15 +105,29 @@ class KafkaService:
         return proc
 
     def _start_server(self, detach: bool) -> subprocess.Popen | None:
-        server_bat = _kafka_bin(self._cfg, "kafka-server-start.bat")
         props = self._kafka_core / "config" / "kraft" / "server.properties"
-        if not server_bat.exists():
-            die(f"Kafka server script not found: {server_bat}")
+        libs_dir = self._kafka_core / "libs"
         if not props.exists():
             die(f"Kafka properties not found: {props}")
+        if not libs_dir.exists():
+            die(f"Kafka libs not found: {libs_dir}")
         info("Starting Kafka server (KRaft)...")
 
-        cmd = [str(server_bat), str(props)]
+        # Build classpath from all JARs in libs/
+        jars = list(libs_dir.glob("*.jar"))
+        classpath = ";".join(str(j) for j in jars)
+
+        # Log4j config
+        log4j = (self._kafka_core / "config" / "log4j2.yaml").resolve()
+
+        cmd = [
+            "java",
+            "-Xmx1G", "-Xms1G",
+            f"-Dlog4j2.configurationFile=file:///{log4j}",
+            "-cp", classpath,
+            "kafka.Kafka",
+            str(props),
+        ]
 
         if detach:
             proc = self._spawn_detached(cmd, "server")
@@ -134,7 +151,8 @@ class KafkaService:
             "java", "-jar", str(ui_jar),
             "--server.port=8080",
         ]
-        ui_config = self._kafka_ui / "config.yml"
+        # Config is in devkit/kafka/config/ui/config.yml
+        ui_config = Path(self._cfg.kafka_path) / "config" / "ui" / "config.yml"
         if ui_config.exists():
             cmd.append(f"--spring.config.additional-location=file:{ui_config}")
 
@@ -161,6 +179,30 @@ class KafkaService:
             return None
         die("Invalid action. Use: server, ui, or clean")
 
+    def _run_kafka_tool(self, classname: str, args: list[str]) -> str | None:
+        """Run a Kafka tool class directly via Java. Returns stdout or None."""
+        libs_dir = self._kafka_core / "libs"
+        jars = list(libs_dir.glob("*.jar"))
+        classpath = ";".join(str(j) for j in jars)
+
+        log4j = (self._kafka_core / "config" / "tools-log4j2.yaml").resolve()
+
+        cmd = [
+            "java",
+            "-Xmx256M",
+            f"-Dlog4j2.configurationFile=file:///{log4j}",
+            "-cp", classpath,
+            classname,
+        ] + args
+
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0:
+            warn(f"  Tool failed: {result.stderr.strip()}")
+            return None
+        return result.stdout.strip()
+
     def clean(self) -> None:
         _ensure_windows()
         logs_dir = self._kafka_core / "temp" / "kraft" / "kafka-logs"
@@ -185,28 +227,23 @@ class KafkaService:
         _rm(kafka_logs)
 
         raw("")
-        storage_bat = _kafka_bin(self._cfg, "kafka-storage.bat")
         props = self._kafka_core / "config" / "kraft" / "server.properties"
 
         raw("Generando nuevo UUID para el storage...")
-        result = subprocess.run(
-            [str(storage_bat), "random-uuid"],
-            capture_output=True, text=True, check=False,
-        )
-        if result.returncode != 0:
-            die(f"Error generando UUID: {result.stderr.strip()}")
-        uuid = result.stdout.strip()
+        uuid = self._run_kafka_tool("kafka.tools.StorageTool", ["random-uuid"])
+        if uuid is None:
+            die("Error generando UUID")
         raw(f"  UUID: {uuid}")
 
         raw("Formateando el storage...")
-        result = subprocess.run(
-            [str(storage_bat), "format", "-t", uuid, "-c", str(props)],
-            capture_output=True, text=True, check=False,
+        output = self._run_kafka_tool(
+            "kafka.tools.StorageTool",
+            ["format", "-t", uuid, "-c", str(props), "--no-initial-controllers"],
         )
-        if "Formatting" in result.stdout or result.returncode == 0:
+        if output is not None and ("Formatting" in output or output == ""):
             raw("Storage reset completado")
         else:
-            die(f"Error formateando storage: {result.stderr.strip()}")
+            die("Error formateando storage")
 
     def _untrack(self, target: str) -> None:
         for p in process_tracker.get_tracked_processes(resource="kafka", target=target):
@@ -217,11 +254,16 @@ class KafkaService:
     def down(self, target: str) -> None:
         _ensure_windows()
         if target == "server":
-            stop_bat = _kafka_bin(self._cfg, "kafka-server-stop.bat")
-            if not stop_bat.exists():
-                die(f"Kafka stop script not found: {stop_bat}")
             info("Waiting for Kafka to stop...")
-            subprocess.run([str(stop_bat)], check=False)
+            # Kill Kafka Java process directly
+            try:
+                result = subprocess.run(["jps", "-l"], capture_output=True, text=True, check=False)
+                for line in result.stdout.strip().splitlines():
+                    if "kafka.Kafka" in line:
+                        pid = line.split()[0]
+                        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
+            except FileNotFoundError:
+                warn("jps not found")
             success("Kafka server stopped")
         elif target == "ui":
             info("Stopping Kafdrop UI...")

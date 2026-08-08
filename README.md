@@ -1,4 +1,4 @@
-# aws-cli-manager
+# yappy-cli-manager
 
 CLI toolkit para el flujo de desarrollo diario en Yappy: sesiones AWS, túneles SSM,
 conexión a bases de datos Aurora, Kafka local y más.
@@ -56,8 +56,8 @@ java --version
 ## Onboarding (nuevo dev)
 
 ```bash
-git clone git@github.com:adev-web/aws-cli-manager.git
-cd aws-cli-manager
+git clone git@github.com:adev-web/yappy-cli-manager.git
+cd yappy-cli-manager
 pip install -e .
 yappy setup               # Configura shell, verifica dependencias, crea config/env.base
 source ~/.bashrc

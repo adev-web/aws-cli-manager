@@ -1,4 +1,4 @@
-# aws-cli-manager — Agent Instructions
+# yappy-cli-manager — Agent Instructions
 
 ## Versioning
 

@@ -68,10 +68,10 @@ def version():
     """Show the installed version."""
     from importlib.metadata import version as _v
     try:
-        ver = _v("aws-cli-manager")
+        ver = _v("yappy-cli-manager")
     except Exception:
         ver = _read_version()
-    info(f"aws-cli-manager v{ver}")
+    info(f"yappy-cli-manager v{ver}")
 
 
 @app.command()
@@ -407,10 +407,21 @@ def setup():
         else:
             warn(f"  {cmd_name} not found — install it first")
 
-    # 4. AWS profile
+    # 4. Kafka (auto-download if missing)
+    print()
+    info("Kafka:")
+    from .kafka.setup import setup_kafka, setup_kafka_configs
+    cfg = Config()
+    setup_kafka_configs(cfg)
+    kafka_ready = setup_kafka(cfg)
+    if kafka_ready:
+        success("  Kafka is ready")
+    else:
+        warn("  Kafka needs manual download — see messages above")
+
+    # 5. AWS profile
     print()
     info("AWS profile:")
-    cfg = Config()
     result = subprocess.run(
         ["aws", "configure", "list", "--profile", cfg.profile],
         capture_output=True, text=True, shell=True,

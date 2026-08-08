@@ -27,7 +27,7 @@ def test_version_command_falls_back_to_pyproject(monkeypatch, capsys):
 
 def test_readme_title_and_docs_fixed():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert readme.startswith("# aws-cli-manager")
+    assert readme.startswith("# yappy-cli-manager")
     assert "Nueva sintaxis (Docker-like)" in readme
     assert "yappy run kafka server -d" in readme
     assert "yappy logs kafka server -f" in readme

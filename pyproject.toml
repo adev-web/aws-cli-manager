@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aws-cli-manager"
+name = "yappy-cli-manager"
 version = "1.0.0"
-description = "AWS CLI Manager - orquestador de sesiones AWS, SSM, RDS, Kafka y port-forwarding"
+description = "Yappy CLI Manager - orquestador de sesiones AWS, SSM, RDS, Kafka y port-forwarding"
 requires-python = ">=3.10"
 dependencies = [
     "typer>=0.12.0",
