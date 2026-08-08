@@ -160,6 +160,12 @@ class KafkaService:
             proc = self._spawn_detached(cmd, "ui")
             success("Kafdrop UI started (background)")
             time.sleep(2)
+            # Open browser
+            if sys.platform == "win32":
+                os.system('start "" "http://localhost:8080"')
+            else:
+                import webbrowser
+                webbrowser.open("http://localhost:8080")
             return proc
 
         try:
