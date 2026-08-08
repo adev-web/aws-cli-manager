@@ -1,0 +1,38 @@
+services:
+  db-dev:
+    image: mysql:8.0
+    container_name: yappy-db-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_USER: yappy
+      MYSQL_PASSWORD: yappy123
+    ports:
+      - "3307:3306"
+    volumes:
+      - db-dev-data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 10
+
+  db-qa:
+    image: mysql:8.0
+    container_name: yappy-db-qa
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_USER: yappy
+      MYSQL_PASSWORD: yappy123
+    ports:
+      - "3308:3306"
+    volumes:
+      - db-qa-data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  db-dev-data:
+  db-qa-data:
