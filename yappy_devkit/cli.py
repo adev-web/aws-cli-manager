@@ -559,28 +559,31 @@ def uninstall():
         ]
 
     if deps:
-        # Use pip-autoremove if available, otherwise force remove deps
-        check = subprocess.run(
-            [sys.executable, "-m", "pip_autoremove", "--help"],
-            capture_output=True,
-        )
-        if check.returncode == 0:
-            subprocess.run(
-                [sys.executable, "-m", "pip_autoremove", "yappy-cli-manager", "-y"],
-                capture_output=True,
+        removed = []
+        kept = []
+        for dep in deps:
+            check = subprocess.run(
+                [sys.executable, "-m", "pip", "show", dep],
+                capture_output=True, text=True,
             )
-            success("  Package + dependencies removed")
-        else:
-            # Fallback: force remove each dependency
-            removed = []
-            for dep in deps:
+            if check.returncode != 0:
+                continue
+            required_by = ""
+            for line in check.stdout.splitlines():
+                if line.startswith("Required-by:"):
+                    required_by = line.split(":", 1)[1].strip()
+            if not required_by:
                 subprocess.run(
                     [sys.executable, "-m", "pip", "uninstall", dep, "-y"],
                     capture_output=True,
                 )
                 removed.append(dep)
-            if removed:
-                success(f"  Dependencies removed: {', '.join(removed)}")
+            else:
+                kept.append(dep)
+        if removed:
+            success(f"  Dependencies removed: {', '.join(removed)}")
+        if kept:
+            info(f"  Dependencies kept (used by others): {', '.join(kept)}")
 
 
 if __name__ == "__main__":
