@@ -557,30 +557,30 @@ def uninstall():
             d.split(">=")[0].split("~=")[0].split("==")[0].split("<")[0].strip()
             for d in data.get("project", {}).get("dependencies", [])
         ]
-    removed = []
-    for dep in deps:
-        # Check if any other package depends on this
+
+    if deps:
+        # Use pip-autoremove if available, otherwise force remove deps
         check = subprocess.run(
-            [sys.executable, "-m", "pip", "show", dep],
-            capture_output=True, text=True,
+            [sys.executable, "-m", "pip_autoremove", "--help"],
+            capture_output=True,
         )
-        if check.returncode != 0:
-            continue  # not installed
-        # Check Required-by field
-        required_by = ""
-        for line in check.stdout.splitlines():
-            if line.startswith("Required-by:"):
-                required_by = line.split(":", 1)[1].strip()
-        if not required_by:
+        if check.returncode == 0:
             subprocess.run(
-                [sys.executable, "-m", "pip", "uninstall", dep, "-y"],
+                [sys.executable, "-m", "pip_autoremove", "yappy-cli-manager", "-y"],
                 capture_output=True,
             )
-            removed.append(dep)
-    if removed:
-        success(f"  Dependencies removed: {', '.join(removed)}")
-    else:
-        info("  All dependencies still used by other packages")
+            success("  Package + dependencies removed")
+        else:
+            # Fallback: force remove each dependency
+            removed = []
+            for dep in deps:
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "uninstall", dep, "-y"],
+                    capture_output=True,
+                )
+                removed.append(dep)
+            if removed:
+                success(f"  Dependencies removed: {', '.join(removed)}")
 
 
 if __name__ == "__main__":
