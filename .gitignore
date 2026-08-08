@@ -24,3 +24,6 @@ devkit/kafka/temp-logs/
 *.log
 *.log.*
 purge.txt
+
+# DB backups
+backups/
