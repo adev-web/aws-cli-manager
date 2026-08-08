@@ -1,1 +1,0 @@
-# Editable install with no version control (aws-cli-manager==1.0.0)
