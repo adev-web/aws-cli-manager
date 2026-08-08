@@ -435,5 +435,95 @@ def setup():
     success("Setup complete. Run 'source ~/.bashrc' to load changes.")
 
 
+@app.command()
+def uninstall():
+    """Remove all yappy artifacts: Kafka, logs, tracker, shell integration."""
+    import shutil
+
+    project_root = Path(__file__).resolve().parent.parent
+    yappy_home = Path.home() / ".yappy"
+
+    info("=== Yappy Uninstall ===")
+    print()
+
+    # 1. Kill running Kafka processes
+    info("Stopping Kafka processes...")
+    try:
+        result = subprocess.run(
+            ["jps", "-l"], capture_output=True, text=True, check=False,
+        )
+        killed = 0
+        for line in result.stdout.strip().splitlines():
+            if "kafka.Kafka" in line or "main.jar" in line:
+                pid = line.split()[0]
+                subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
+                killed += 1
+        if killed:
+            success(f"  Killed {killed} process(es)")
+        else:
+            success("  No Kafka processes running")
+    except FileNotFoundError:
+        warn("  jps not found — skipping process check")
+
+    # 2. Delete Kafka binaries and configs
+    print()
+    info("Kafka files:")
+    kafka_dir = project_root / "devkit" / "kafka"
+    if kafka_dir.exists():
+        shutil.rmtree(kafka_dir)
+        success(f"  Removed {kafka_dir}")
+    else:
+        success("  Not found (already clean)")
+
+    # 3. Delete ~/.yappy (logs + tracker)
+    print()
+    info("Cache and logs:")
+    if yappy_home.exists():
+        shutil.rmtree(yappy_home)
+        success(f"  Removed {yappy_home}")
+    else:
+        success("  Not found (already clean)")
+
+    # 4. Delete Kafka storage in /tmp
+    print()
+    info("Kafka storage:")
+    tmp_dirs = [
+        Path("/tmp/kraft-combined-logs"),
+        Path(os.environ.get("TEMP", "")) / "kraft-combined-logs",
+    ]
+    cleaned = False
+    for d in tmp_dirs:
+        if d.exists():
+            try:
+                shutil.rmtree(d)
+                success(f"  Removed {d}")
+                cleaned = True
+            except PermissionError:
+                warn(f"  {d} locked - reboot or delete manually")
+                cleaned = True
+    if not cleaned:
+        success("  Not found (already clean)")
+
+    # 5. Remove shell integration from .bashrc
+    print()
+    info("Shell integration:")
+    bashrc = Path.home() / ".bashrc"
+    if bashrc.exists():
+        content = bashrc.read_text()
+        marker = 'eval "$(yappy init bash)"'
+        if marker in content:
+            lines = content.splitlines()
+            lines = [l for l in lines if marker not in l]
+            bashrc.write_text("\n".join(lines) + "\n")
+            success(f"  Removed eval line from {bashrc}")
+        else:
+            success("  No eval line found (already clean)")
+    else:
+        success("  No .bashrc found")
+
+    print()
+    success("Uninstall complete. Repo is clean.")
+
+
 if __name__ == "__main__":
     app()
