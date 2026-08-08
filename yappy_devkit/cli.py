@@ -397,6 +397,14 @@ def setup():
     # 3. Dependencies
     print()
     info("Dependencies:")
+
+    # Upgrade pip first
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
+        capture_output=True,
+    )
+    success("  pip upgraded")
+
     for cmd_name in ("aws", "session-manager-plugin"):
         result = subprocess.run(
             ["where", cmd_name] if sys.platform == "win32" else ["which", cmd_name],
@@ -526,7 +534,7 @@ def uninstall():
     print()
     success("Uninstall complete. Repo is clean.")
 
-    # 6. Uninstall Python package (last — code already in memory)
+    # 6. Uninstall Python package + dependencies (last — code already in memory)
     print()
     info("Uninstalling Python package...")
     result = subprocess.run(
@@ -537,7 +545,33 @@ def uninstall():
         success("  Package removed")
     else:
         warn(f"  Could not uninstall: {result.stderr.strip()}")
-        info("  Run manually: pip uninstall yappy-cli-manager")
+
+    # Remove dependencies that are no longer needed
+    deps = ["typer", "python-dotenv", "rich", "botocore", "jmespath"]
+    removed = []
+    for dep in deps:
+        # Check if any other package depends on this
+        check = subprocess.run(
+            [sys.executable, "-m", "pip", "show", dep],
+            capture_output=True, text=True,
+        )
+        if check.returncode != 0:
+            continue  # not installed
+        # Check Required-by field
+        required_by = ""
+        for line in check.stdout.splitlines():
+            if line.startswith("Required-by:"):
+                required_by = line.split(":", 1)[1].strip()
+        if not required_by:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "uninstall", dep, "-y"],
+                capture_output=True,
+            )
+            removed.append(dep)
+    if removed:
+        success(f"  Dependencies removed: {', '.join(removed)}")
+    else:
+        info("  All dependencies still used by other packages")
 
 
 if __name__ == "__main__":
