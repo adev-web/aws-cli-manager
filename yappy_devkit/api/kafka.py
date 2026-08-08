@@ -119,10 +119,12 @@ class KafkaService:
 
         # Log4j config
         log4j = (self._kafka_core / "config" / "log4j2.yaml").resolve()
+        temp_logs = str(Path(self._cfg.kafka_path) / "temp-logs")
 
         cmd = [
             "java",
             "-Xmx1G", "-Xms1G",
+            f"-Dkafka.logs.dir={temp_logs}",
             f"-Dlog4j2.configurationFile=file:///{log4j}",
             "-cp", classpath,
             "kafka.Kafka",
