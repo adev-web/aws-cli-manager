@@ -525,9 +525,19 @@ def uninstall():
 
     print()
     success("Uninstall complete. Repo is clean.")
+
+    # 6. Uninstall Python package (last — code already in memory)
     print()
-    info("To remove the Python package, run:")
-    info("  pip uninstall yappy-cli-manager")
+    info("Uninstalling Python package...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "uninstall", "yappy-cli-manager", "-y"],
+        capture_output=True, text=True, cwd=str(project_root),
+    )
+    if result.returncode == 0:
+        success("  Package removed")
+    else:
+        warn(f"  Could not uninstall: {result.stderr.strip()}")
+        info("  Run manually: pip uninstall yappy-cli-manager")
 
 
 if __name__ == "__main__":
