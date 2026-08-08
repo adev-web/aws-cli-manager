@@ -546,8 +546,17 @@ def uninstall():
     else:
         warn(f"  Could not uninstall: {result.stderr.strip()}")
 
-    # Remove dependencies that are no longer needed
-    deps = ["typer", "python-dotenv", "rich", "botocore", "jmespath"]
+    # Remove dependencies that are no longer needed (read from pyproject.toml)
+    import tomllib
+    pyproject = project_root / "pyproject.toml"
+    deps = []
+    if pyproject.exists():
+        with open(pyproject, "rb") as f:
+            data = tomllib.load(f)
+        deps = [
+            d.split(">=")[0].split("~=")[0].split("==")[0].split("<")[0].strip()
+            for d in data.get("project", {}).get("dependencies", [])
+        ]
     removed = []
     for dep in deps:
         # Check if any other package depends on this
